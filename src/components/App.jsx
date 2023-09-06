@@ -5,7 +5,7 @@ import { fetchImages } from '../api.js';
 import { Toaster } from 'react-hot-toast';
 import { Loader } from './Loader/Loader';
 import { ModalWindow } from './Modal/Modal';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export const App = () => {
   const [query, setQuery] = useState('');
@@ -18,30 +18,22 @@ export const App = () => {
   const [hits, setHits] = useState(0);
   const [imageSrc, setImageSrc] = useState('');
 
-  const prevQueryRef = useRef(query);
-  const prevPageRef = useRef(page);
-  const prevQueryIdRef = useRef(queryId);
-
   useEffect(() => {
+    if (!query) {
+      return;
+    }
     async function getImages() {
-      if (
-        query &&
-        (prevQueryRef !== query ||
-          prevPageRef !== page ||
-          prevQueryIdRef !== queryId)
-      ) {
-        try {
-          setLoading(true);
-          setError(false);
-          const newImages = await fetchImages(query, page);
-          setImages(prevImages => [...prevImages, ...newImages.hits]);
-          setHits(newImages.totalHits);
-          setError(false);
-        } catch (error) {
-          setError(true);
-        } finally {
-          setLoading(false);
-        }
+      try {
+        setLoading(true);
+        setError(false);
+        const newImages = await fetchImages(query, page);
+        setImages(prevImages => [...prevImages, ...newImages.hits]);
+        setHits(newImages.totalHits);
+        setError(false);
+      } catch (error) {
+        setError(true);
+      } finally {
+        setLoading(false);
       }
     }
     getImages();
