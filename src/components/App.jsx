@@ -1,4 +1,3 @@
-import { Component } from 'react';
 import { Button } from './Button/Button';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Searchbar } from './Searchbar/Searchbar';
@@ -6,91 +5,87 @@ import { fetchImages } from '../api.js';
 import { Toaster } from 'react-hot-toast';
 import { Loader } from './Loader/Loader';
 import { ModalWindow } from './Modal/Modal';
+import { useState, useEffect, useRef } from 'react';
 
-export class App extends Component {
-  state = {
-    query: '',
-    queryId: null,
-    images: [],
-    page: 1,
-    loading: false,
-    error: false,
-    hits: 0,
-    isOpen: false,
-    imageSrc: '',
-  };
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [queryId, setQueryId] = useState(null);
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [hits, setHits] = useState(0);
+  const [imageSrc, setImageSrc] = useState('');
 
-  handleSubmit = value => {
-    this.setState({
-      query: value,
-      queryId: Date.now(),
-      images: [],
-      page: 1,
-      hits: 0,
-    });
-  };
+  const prevQueryRef = useRef(query);
+  const prevPageRef = useRef(page);
+  const prevQueryIdRef = useRef(queryId);
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
-  };
-  async componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.query !== this.state.query ||
-      prevState.page !== this.state.page ||
-      prevState.queryId !== this.state.queryId
-    ) {
-      try {
-        this.setState({ loading: true, error: false });
-        const newImages = await fetchImages(this.state.query, this.state.page);
-        this.setState({
-          images: [...this.state.images, ...newImages.hits],
-          hits: newImages.totalHits,
-          error: false,
-        });
-      } catch (error) {
-        this.setState({ error: true });
-      } finally {
-        this.setState({ loading: false });
+  useEffect(() => {
+    async function getImages() {
+      if (
+        query &&
+        (prevQueryRef !== query ||
+          prevPageRef !== page ||
+          prevQueryIdRef !== queryId)
+      ) {
+        try {
+          setLoading(true);
+          setError(false);
+          const newImages = await fetchImages(query, page);
+          setImages(prevImages => [...prevImages, ...newImages.hits]);
+          setHits(newImages.totalHits);
+          setError(false);
+        } catch (error) {
+          setError(true);
+        } finally {
+          setLoading(false);
+        }
       }
     }
-  }
+    getImages();
+  }, [query, page, queryId]);
 
-  openModal = image => {
-    this.setState({ imageSrc: image, isOpen: true });
-  };
-  closeModal = () => {
-    this.setState({
-      isOpen: false,
-      imageSrc: '',
-    });
+  const handleSubmit = value => {
+    setQuery(value);
+    setQueryId(Date.now());
+    setImages([]);
+    setPage(1);
+    setHits(0);
   };
 
-  render() {
-    return (
-      <div className="App">
-        <Searchbar onSubmit={this.handleSubmit} />
-        {this.state.loading && (
-          <Loader loading={this.state.loading} className="Loader" />
-        )}
-        {this.state.error && !this.state.loading && (
-          <div>There was an error! Please try to reload the page.</div>
-        )}
-        {this.state.images.length > 0 && (
-          <ImageGallery images={this.state.images} openModal={this.openModal} />
-        )}
-        {this.state.images.length > 0 &&
-          this.state.images.length < this.state.hits && (
-            <Button onLoadMore={this.handleLoadMore} />
-          )}
-        <Toaster position="top-center" error={this.state.error} />
-        <ModalWindow
-          isOpen={this.state.isOpen}
-          onRequestClose={this.closeModal}
-          image={this.state.imageSrc}
-        />
-      </div>
-    );
-  }
-}
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
+  };
+  const openModal = image => {
+    setImageSrc(image);
+    setIsOpen(true);
+  };
+  const closeModal = () => {
+    setIsOpen(false);
+    setImageSrc('');
+  };
+
+  return (
+    <div className="App">
+      <Searchbar onSubmit={handleSubmit} />
+      {loading && <Loader loading={loading} className="Loader" />}
+      {error && !loading && (
+        <div>There was an error! Please try to reload the page.</div>
+      )}
+      {images.length > 0 && (
+        <ImageGallery images={images} openModal={openModal} />
+      )}
+      {images.length > 0 && images.length < hits && (
+        <Button onLoadMore={handleLoadMore} />
+      )}
+      <Toaster position="top-center" error={error} />
+      <ModalWindow
+        isOpen={isOpen}
+        onRequestClose={closeModal}
+        image={imageSrc}
+      />
+    </div>
+  );
+};
